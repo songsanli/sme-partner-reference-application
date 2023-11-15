@@ -579,82 +579,82 @@ srv.on("READ", "ByDProjectsTechUser", async (req) => {
 // ----------------------------------------------------------------------------
 // Event-based integration with ByD
 
-const bydmessage = await cds.connect.to("byd_messaging");  
+// const bydmessage = await cds.connect.to("byd_messaging");  
     
-bydmessage.on("sap/byd/project/ProjectUpdated", async msg => {
-    try{
-        console.log("BYD-EVENT: Received event notification from ByD on topic sap/byd/project/ProjectUpdated via message queue ", msg);
+// bydmessage.on("sap/byd/project/ProjectUpdated", async msg => {
+//     try{
+//         console.log("BYD-EVENT: Received event notification from ByD on topic sap/byd/project/ProjectUpdated via message queue ", msg);
         
-        // Check if the message is for project root changes => "type": "sap.byd.Project.Root.Updated.v1"  
-        let messageType = msg.headers.type;
-        let messageTypePattern = /sap.byd.Project.Root/g;
-        if( messageTypePattern.test(messageType) ){
-            // Read the project key provided by the event data payload in element 'root-entity-id'
-            let rootEntityID = Object.keys(msg.data)[0];
-            let rootEntityIDPattern = /root-entity-id/g;
-            if ( rootEntityIDPattern.test(rootEntityID)){
-                const projectKey =  Object.values(msg.data)[0];                    
-                const authorReadings = await SELECT.from("sap.samples.authorreadings.AuthorReadings").where({ projectObjectID: projectKey });
-                let eventMeshMessages, authorReadingID, authorReadingIdentifier;
-                let remoteProjectID, remoteProjectObjectID, remoteProjectBlockingStatus;
-                if (authorReadings.length === 1) {
-                    authorReadings.forEach( authorReading => {
-                        eventMeshMessages = authorReading.eventMeshMessage;
-                        authorReadingID = authorReading.ID;
-                        authorReadingIdentifier = authorReading.identifier;
-                        remoteProjectID = authorReading.projectID;
-                    });   
-                    let authorReadingUpdateResp;
-                    // Trigger remote service call to get the ByD project using a technical user                        
-                    const bydProject = await cds.connect.to('byd_khproject_tech_user');                                               
-                    const existingProject = await bydProject.run(SELECT.from('AuthorReadingManager.ByDProjectsTechUser').where({ projectID: remoteProjectID }));
+//         // Check if the message is for project root changes => "type": "sap.byd.Project.Root.Updated.v1"  
+//         let messageType = msg.headers.type;
+//         let messageTypePattern = /sap.byd.Project.Root/g;
+//         if( messageTypePattern.test(messageType) ){
+//             // Read the project key provided by the event data payload in element 'root-entity-id'
+//             let rootEntityID = Object.keys(msg.data)[0];
+//             let rootEntityIDPattern = /root-entity-id/g;
+//             if ( rootEntityIDPattern.test(rootEntityID)){
+//                 const projectKey =  Object.values(msg.data)[0];                    
+//                 const authorReadings = await SELECT.from("sap.samples.authorreadings.AuthorReadings").where({ projectObjectID: projectKey });
+//                 let eventMeshMessages, authorReadingID, authorReadingIdentifier;
+//                 let remoteProjectID, remoteProjectObjectID, remoteProjectBlockingStatus;
+//                 if (authorReadings.length === 1) {
+//                     authorReadings.forEach( authorReading => {
+//                         eventMeshMessages = authorReading.eventMeshMessage;
+//                         authorReadingID = authorReading.ID;
+//                         authorReadingIdentifier = authorReading.identifier;
+//                         remoteProjectID = authorReading.projectID;
+//                     });   
+//                     let authorReadingUpdateResp;
+//                     // Trigger remote service call to get the ByD project using a technical user                        
+//                     const bydProject = await cds.connect.to('byd_khproject_tech_user');                                               
+//                     const existingProject = await bydProject.run(SELECT.from('AuthorReadingManager.ByDProjectsTechUser').where({ projectID: remoteProjectID }));
                     
-                    // Reuse ByD project if already existing                        
-                    if (existingProject.length === 1){
-                        remoteProjectID = existingProject[0].projectID;
-                        remoteProjectObjectID = existingProject[0].ID;
-                        remoteProjectBlockingStatus = existingProject[0].blockingStatusCode;                            
-                        console.log("ByD project ID: " + remoteProjectID + ", project blocking status: " + remoteProjectBlockingStatus);
-                    }
+//                     // Reuse ByD project if already existing                        
+//                     if (existingProject.length === 1){
+//                         remoteProjectID = existingProject[0].projectID;
+//                         remoteProjectObjectID = existingProject[0].ID;
+//                         remoteProjectBlockingStatus = existingProject[0].blockingStatusCode;                            
+//                         console.log("ByD project ID: " + remoteProjectID + ", project blocking status: " + remoteProjectBlockingStatus);
+//                     }
                     
-                    // Check the remote project status:
-                    // If 'on-hold'-checkbox is set, then block the author reading, else publish the author reading 
-                    if (remoteProjectBlockingStatus === "1" ){     
-                        if (eventMeshMessages){ 
-                            eventMeshMessages = eventMeshMessages + "\n" +"Author reading published by ByD event notification.";
-                        }else{
-                            eventMeshMessages = "Author reading published by ByD event notification.";
-                        };
-                        authorReadingUpdateResp = await UPDATE("sap.samples.authorreadings.AuthorReadings").set({eventMeshMessage : eventMeshMessages , statusCode_code : reuse.authorReadingStatusCode.published }).where({ ID: authorReadingID });
-                        console.log("Author reading " + authorReadingIdentifier +" is published via event message");
-                    }else if(remoteProjectBlockingStatus === "2" || remoteProjectBlockingStatus === "3" ){
-                        if (eventMeshMessages){ 
-                            eventMeshMessages = eventMeshMessages + "\n" +"Author reading blocked by ByD event notification.";
-                        }else{
-                            eventMeshMessages = "Author reading blocked by ByD event notification.";
-                        };
-                        authorReadingUpdateResp = await UPDATE("sap.samples.authorreadings.AuthorReadings").set({eventMeshMessage : eventMeshMessages , statusCode_code : reuse.authorReadingStatusCode.blocked }).where({ ID: authorReadingID });
-                        console.log("Author reading " + authorReadingIdentifier +" is blocked via event message");
-                    }else{
-                        console.log("BYD-EVENT: ByD blocking status else");                    
-                        if (eventMeshMessages){ 
-                            eventMeshMessages = eventMeshMessages + "\n" +"ByD event notification received; no action required.";
-                        }else{
-                            eventMeshMessages = "ByD event notification received; no action required.";
-                        };
-                        authorReadingUpdateResp = await UPDATE("sap.samples.authorreadings.AuthorReadings").set({eventMeshMessage : eventMeshMessages }).where({ ID: authorReadingID });
-                        console.log("Author reading " + authorReadingIdentifier + ": Event message received from ByD and no action required");
-                    };
-                    if (authorReadingUpdateResp === 1){
-                        console.log("Event message log updated");
-                    }                    
-                }
-            }
-        }     
-    }catch (error){
-        console.log("Internal error on processing ByD event notifications: " + error);
-    }
-})    
+//                     // Check the remote project status:
+//                     // If 'on-hold'-checkbox is set, then block the author reading, else publish the author reading 
+//                     if (remoteProjectBlockingStatus === "1" ){     
+//                         if (eventMeshMessages){ 
+//                             eventMeshMessages = eventMeshMessages + "\n" +"Author reading published by ByD event notification.";
+//                         }else{
+//                             eventMeshMessages = "Author reading published by ByD event notification.";
+//                         };
+//                         authorReadingUpdateResp = await UPDATE("sap.samples.authorreadings.AuthorReadings").set({eventMeshMessage : eventMeshMessages , statusCode_code : reuse.authorReadingStatusCode.published }).where({ ID: authorReadingID });
+//                         console.log("Author reading " + authorReadingIdentifier +" is published via event message");
+//                     }else if(remoteProjectBlockingStatus === "2" || remoteProjectBlockingStatus === "3" ){
+//                         if (eventMeshMessages){ 
+//                             eventMeshMessages = eventMeshMessages + "\n" +"Author reading blocked by ByD event notification.";
+//                         }else{
+//                             eventMeshMessages = "Author reading blocked by ByD event notification.";
+//                         };
+//                         authorReadingUpdateResp = await UPDATE("sap.samples.authorreadings.AuthorReadings").set({eventMeshMessage : eventMeshMessages , statusCode_code : reuse.authorReadingStatusCode.blocked }).where({ ID: authorReadingID });
+//                         console.log("Author reading " + authorReadingIdentifier +" is blocked via event message");
+//                     }else{
+//                         console.log("BYD-EVENT: ByD blocking status else");                    
+//                         if (eventMeshMessages){ 
+//                             eventMeshMessages = eventMeshMessages + "\n" +"ByD event notification received; no action required.";
+//                         }else{
+//                             eventMeshMessages = "ByD event notification received; no action required.";
+//                         };
+//                         authorReadingUpdateResp = await UPDATE("sap.samples.authorreadings.AuthorReadings").set({eventMeshMessage : eventMeshMessages }).where({ ID: authorReadingID });
+//                         console.log("Author reading " + authorReadingIdentifier + ": Event message received from ByD and no action required");
+//                     };
+//                     if (authorReadingUpdateResp === 1){
+//                         console.log("Event message log updated");
+//                     }                    
+//                 }
+//             }
+//         }     
+//     }catch (error){
+//         console.log("Internal error on processing ByD event notifications: " + error);
+//     }
+// })    
 
 
 })
