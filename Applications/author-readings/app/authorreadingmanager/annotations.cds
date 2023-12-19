@@ -96,20 +96,20 @@ annotate service.AuthorReadings with @(UI : {
             Label  : '{i18n>block}',
             Action : 'AuthorReadingManager.block'
         },
-        {
-            $Type  : 'UI.DataFieldForAction',
-            Label  : '{i18n>createProject}',
-            Action : 'AuthorReadingManager.createByDProject',            
-            @UI.Hidden : { $edmJson : 
-                { $If : 
-                    [
-                        { $Eq : [ {$Path : 'createByDProjectEnabled'}, true ] },
-                        false,
-                        true
-                    ]
-                }   
-            }
-        }
+        // {
+        //     $Type  : 'UI.DataFieldForAction',
+        //     Label  : '{i18n>createProject}',
+        //     Action : 'AuthorReadingManager.createByDProject',            
+        //     @UI.Hidden : { $edmJson : 
+        //         { $If : 
+        //             [
+        //                 { $Eq : [ {$Path : 'createByDProjectEnabled'}, true ] },
+        //                 false,
+        //                 true
+        //             ]
+        //         }   
+        //     }
+        // }
     ],
     
     HeaderInfo : {

@@ -81,12 +81,12 @@ srv.after("UPDATE", "AuthorReadings", async (req) => {
 });
 
 // Check connected backend systems
-srv.before("READ", "AuthorReadings", async (req) => {
+// srv.before("READ", "AuthorReadings", async (req) => {
 
-    // ByD
-    ByDIsConnectedIndicator = await reuse.checkDestination(req,"byd"); 
-    ByDSystemName           = await reuse.getDestinationDescription(req,"byd-url");
-});
+//     // ByD
+//     ByDIsConnectedIndicator = await reuse.checkDestination(req,"byd"); 
+//     ByDSystemName           = await reuse.getDestinationDescription(req,"byd-url");
+// });
 
 // Apply a colour code based on the author reading status
 srv.after("READ", "AuthorReadings", (req) => {
@@ -138,7 +138,7 @@ srv.on("block", async (req) => {
         if (updateStatus === 1) { // success
             req.info(200, 'ACTION_BLOCK_SUCCESS', [authorReading.identifier]);
             // emit event message to event mesh
-            await reuse.emitAuthorReadingEvent(req, id, "AuthorReadingBlocked");
+            // await reuse.emitAuthorReadingEvent(req, id, "AuthorReadingBlocked");
         } else { // no success
             // error message: could not be blocked
             req.error(400, 'ACTION_BLOCK_NOT_POSSIBLE', [authorReading.identifier]);
@@ -167,7 +167,7 @@ srv.on("publish", async (req) => {
         if (updateStatus === 1) { // success
             req.info(200, 'ACTION_PUBLISH_SUCCESS', [authorReading.identifier]);
             // emit event message to event mesh
-            await reuse.emitAuthorReadingEvent(req, id, "AuthorReadingPublished");
+            // await reuse.emitAuthorReadingEvent(req, id, "AuthorReadingPublished");
         } else { // no success
             // error message: could not be blocked
             req.error(400, 'ACTION_PUBLISH_NOT_POSSIBLE', [authorReading.identifier]);
