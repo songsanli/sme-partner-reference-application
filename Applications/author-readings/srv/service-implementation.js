@@ -429,79 +429,79 @@ srv.on("confirmParticipation", async (req) => {
 // Implementation of entity events (entity AuthorReadings) with impact on remote services
 
 // Entity action: Create ByD Project
-srv.on("createByDProject", async (req) => {
-    try {
-        const authorReadingID = (req.params.pop()).ID;
-        const authorReadings = await SELECT.from("sap.samples.authorreadings.AuthorReadings").where({ ID: authorReadingID });
-        // Allow action for active entity instances only
-        if ( authorReadings.length === 1 ) {
-            let authorReadingIdentifier, authorReadingDescription, authorReadingTitle, authorReadingDate, authorReadingProjectSystem;
-            authorReadings.forEach((authorReading) => {
-                authorReadingIdentifier = authorReading.identifier;
-                authorReadingDescription = authorReading.description;
-                authorReadingTitle = authorReading.title;
-                authorReadingDate = authorReading.date;
-                authorReadingProjectSystem = authorReading.projectSystem;
-            });
+// srv.on("createByDProject", async (req) => {
+//     try {
+//         const authorReadingID = (req.params.pop()).ID;
+//         const authorReadings = await SELECT.from("sap.samples.authorreadings.AuthorReadings").where({ ID: authorReadingID });
+//         // Allow action for active entity instances only
+//         if ( authorReadings.length === 1 ) {
+//             let authorReadingIdentifier, authorReadingDescription, authorReadingTitle, authorReadingDate, authorReadingProjectSystem;
+//             authorReadings.forEach((authorReading) => {
+//                 authorReadingIdentifier = authorReading.identifier;
+//                 authorReadingDescription = authorReading.description;
+//                 authorReadingTitle = authorReading.title;
+//                 authorReadingDate = authorReading.date;
+//                 authorReadingProjectSystem = authorReading.projectSystem;
+//             });
 
-            if ( authorReadingProjectSystem == "ByD" || (!authorReadingProjectSystem) ) {
+//             if ( authorReadingProjectSystem == "ByD" || (!authorReadingProjectSystem) ) {
                 
-                var projectRecord = await connectorByD.projectDataRecord(authorReadingIdentifier, authorReadingTitle, authorReadingDate);
+//                 var projectRecord = await connectorByD.projectDataRecord(authorReadingIdentifier, authorReadingTitle, authorReadingDate);
 
-                // Check and create the project instance
-                // If the project already exist, then read and update the local project elements in entity AuthorReadings
+//                 // Check and create the project instance
+//                 // If the project already exist, then read and update the local project elements in entity AuthorReadings
                 
-                // Get the entity service (entity "ByDProjects")
-                const { ByDProjects } = srv.entities;
-                var remoteProjectID, remoteProjectObjectID;
+//                 // Get the entity service (entity "ByDProjects")
+//                 const { ByDProjects } = srv.entities;
+//                 var remoteProjectID, remoteProjectObjectID;
 
-                // GET service call on remote project entity
-                const existingProject = await srv.run( SELECT.from(ByDProjects).where({ ProjectID: projectRecord.ProjectID }) );
+//                 // GET service call on remote project entity
+//                 const existingProject = await srv.run( SELECT.from(ByDProjects).where({ ProjectID: projectRecord.ProjectID }) );
 
-                if (existingProject.length === 1) {
-                    remoteProjectID = existingProject[0].projectID;
-                    remoteProjectObjectID = existingProject[0].ID;
-                } else {
-                    // POST request to create the project via remote service
-                    const remoteCreatedProject = await srv.run( INSERT.into(ByDProjects).entries(projectRecord) );
-                    if (remoteCreatedProject) {
-                        remoteProjectID = remoteCreatedProject.projectID;
-                        remoteProjectObjectID = remoteCreatedProject.ID;
-                    }
-                }
+//                 if (existingProject.length === 1) {
+//                     remoteProjectID = existingProject[0].projectID;
+//                     remoteProjectObjectID = existingProject[0].ID;
+//                 } else {
+//                     // POST request to create the project via remote service
+//                     const remoteCreatedProject = await srv.run( INSERT.into(ByDProjects).entries(projectRecord) );
+//                     if (remoteCreatedProject) {
+//                         remoteProjectID = remoteCreatedProject.projectID;
+//                         remoteProjectObjectID = remoteCreatedProject.ID;
+//                     }
+//                 }
 
-                // Generate remote ByD Project URL and update the URL
-                if (remoteProjectID) {
+//                 // Generate remote ByD Project URL and update the URL
+//                 if (remoteProjectID) {
                     
-                    // Read the ByD system URL dynamically from BTP destination "byd-url"
-                    var bydRemoteSystem = await reuse.getDestinationURL(req , 'byd-url'); 
+//                     // Read the ByD system URL dynamically from BTP destination "byd-url"
+//                     var bydRemoteSystem = await reuse.getDestinationURL(req , 'byd-url'); 
                     
-                    // Set the URL of ByD project overview screen for UI navigation
-                    var bydRemoteProjectExternalURL =
-                        "/sap/ap/ui/runtime?bo_ns=http://sap.com/xi/AP/ProjectManagement/Global&bo=Project&node=Root&operation=OpenByProjectID&object_key=" +
-                        projectRecord.ProjectID +
-                        "&key_type=APC_S_PROJECT_ID";
-                    var bydRemoteProjectExternalCompleteURL = bydRemoteSystem.concat( bydRemoteProjectExternalURL );
+//                     // Set the URL of ByD project overview screen for UI navigation
+//                     var bydRemoteProjectExternalURL =
+//                         "/sap/ap/ui/runtime?bo_ns=http://sap.com/xi/AP/ProjectManagement/Global&bo=Project&node=Root&operation=OpenByProjectID&object_key=" +
+//                         projectRecord.ProjectID +
+//                         "&key_type=APC_S_PROJECT_ID";
+//                     var bydRemoteProjectExternalCompleteURL = bydRemoteSystem.concat( bydRemoteProjectExternalURL );
                     
-                    // Update project elements in entity AuthorReadings
-                    await UPDATE("sap.samples.authorreadings.AuthorReadings")
-                        .set({
-                            ProjectID: remoteProjectID,
-                            projectObjectID: remoteProjectObjectID,
-                            projectURL: bydRemoteProjectExternalCompleteURL,
-                            projectSystem : "ByD"
-                        })
-                        .where({ ID: authorReadingID });
-                }
-            }                   
-        } else {
-            req.error(400, "ACTION_CREATE_PROJECT_DRAFT");
-        }
-    } catch (error) {
-        // App reacts error tolerant in case of calling the remote service, mostly if the remote service is not available of if the destination is missing
-        console.log("ACTION_CREATE_PROJECT_CONNECTION" + "; " + error);
-    }
-});
+//                     // Update project elements in entity AuthorReadings
+//                     await UPDATE("sap.samples.authorreadings.AuthorReadings")
+//                         .set({
+//                             ProjectID: remoteProjectID,
+//                             projectObjectID: remoteProjectObjectID,
+//                             projectURL: bydRemoteProjectExternalCompleteURL,
+//                             projectSystem : "ByD"
+//                         })
+//                         .where({ ID: authorReadingID });
+//                 }
+//             }                   
+//         } else {
+//             req.error(400, "ACTION_CREATE_PROJECT_DRAFT");
+//         }
+//     } catch (error) {
+//         // App reacts error tolerant in case of calling the remote service, mostly if the remote service is not available of if the destination is missing
+//         console.log("ACTION_CREATE_PROJECT_CONNECTION" + "; " + error);
+//     }
+// });
 
 // Expand author readings to remote projects
 srv.on("READ", "AuthorReadings", async (req, next) => {
